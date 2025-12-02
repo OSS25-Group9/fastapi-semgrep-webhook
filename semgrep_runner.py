@@ -18,6 +18,7 @@ def run_semgrep(target_dir: str):
     cmd = [
         "semgrep",
         "--config", "p/default",
+        "--no-git-ignore",
         "--json",
         "--output", result_file,
         code_dir
