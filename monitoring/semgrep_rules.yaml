@@ -1,0 +1,305 @@
+rules:
+  # =============================================================================
+  # 1. 보안 취약점 탐지 (Security Vulnerabilities)
+  # =============================================================================
+  
+  - id: hardcoded-credentials
+    pattern-either:
+      - pattern: password = "..."
+      - pattern: PASSWORD = "..."
+      - pattern: secret = "..."
+      - pattern: SECRET = "..."
+      - pattern: api_key = "..."
+      - pattern: API_KEY = "..."
+      - pattern: token = "..."
+      - pattern: TOKEN = "..."
+    message: Hardcoded credentials detected. Use environment variables instead.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      confidence: HIGH
+
+  - id: sql-injection-risk
+    pattern-either:
+      - pattern: |
+          cursor.execute("... " + $VAR + " ...")
+      - pattern: |
+          cursor.execute(f"... {$VAR} ...")
+      - pattern: |
+          cursor.execute("...".format($VAR))
+    message: Potential SQL injection. Use parameterized queries instead.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      confidence: HIGH
+
+  - id: eval-usage
+    pattern: eval($ARG)
+    message: Use of eval() is dangerous and can lead to code injection. Avoid using eval().
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"
+      confidence: HIGH
+
+  - id: pickle-deserialization
+    pattern-either:
+      - pattern: pickle.loads($DATA)
+      - pattern: pickle.load($FILE)
+    message: Unpickling data from untrusted sources can lead to arbitrary code execution.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      confidence: HIGH
+
+  - id: weak-cryptography
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+    message: MD5 and SHA1 are cryptographically broken. Use SHA256 or higher.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      confidence: HIGH
+
+  # =============================================================================
+  # 2. FastAPI 특화 보안 규칙
+  # =============================================================================
+
+  - id: fastapi-missing-dependency
+    pattern: |
+      @app.$METHOD(...)
+      def $FUNC(..., $PARAM: $TYPE = ...):
+        ...
+    message: FastAPI endpoint missing dependency injection. Consider using Depends() for better security and testing.
+    severity: INFO
+    languages:
+      - python
+    metadata:
+      category: best-practice
+      framework: fastapi
+
+  - id: fastapi-no-input-validation
+    pattern: |
+      @app.$METHOD(...)
+      def $FUNC($PARAM):
+        ...
+    message: FastAPI endpoint parameter lacks type annotation. Add type hints for automatic validation.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: best-practice
+      framework: fastapi
+
+  - id: fastapi-exposed-debug-mode
+    pattern: |
+      uvicorn.run(..., debug=True, ...)
+    message: Debug mode should not be enabled in production.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      framework: fastapi
+
+  # =============================================================================
+  # 3. 코드 품질 및 베스트 프랙티스
+  # =============================================================================
+
+  - id: bare-except
+    pattern: |
+      try:
+        ...
+      except:
+        ...
+    message: Bare except clause catches all exceptions. Specify exception types.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: best-practice
+      confidence: HIGH
+
+  - id: print-statement-in-production
+    pattern: print(...)
+    message: Avoid using print() in production code. Use logging instead.
+    severity: INFO
+    languages:
+      - python
+    metadata:
+      category: best-practice
+
+  - id: mutable-default-argument
+    pattern: |
+      def $FUNC(..., $ARG=[], ...):
+        ...
+    message: Mutable default argument. Use None as default and initialize inside function.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: best-practice
+      confidence: HIGH
+
+  - id: subprocess-shell-true
+    pattern: subprocess.$METHOD(..., shell=True, ...)
+    message: Using shell=True can be a security hazard. Avoid if possible.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+
+  # =============================================================================
+  # 4. GitHub Webhook 특화 규칙
+  # =============================================================================
+
+  - id: webhook-no-signature-verification
+    pattern: |
+      @app.post("/webhook")
+      def $FUNC(...):
+        ...
+    message: Webhook endpoint should verify GitHub signature to ensure authenticity.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      framework: github-webhook
+
+  - id: webhook-missing-error-handling
+    pattern: |
+      @app.post("/webhook")
+      def $FUNC(...):
+        ...
+        $PAYLOAD = $REQ.json()
+        ...
+    message: Webhook should include try-except for malformed payloads.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: reliability
+      framework: github-webhook
+
+  # =============================================================================
+  # 5. 리소스 관리
+  # =============================================================================
+
+  - id: file-not-closed
+    pattern: |
+      $F = open(...)
+      ...
+    message: File opened but not explicitly closed. Use 'with' statement.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: best-practice
+      confidence: MEDIUM
+
+  - id: requests-without-timeout
+    pattern-either:
+      - pattern: requests.get($URL)
+      - pattern: requests.post($URL)
+      - pattern: requests.put($URL)
+      - pattern: requests.delete($URL)
+    message: HTTP request without timeout can hang indefinitely. Add timeout parameter.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: reliability
+
+  # =============================================================================
+  # 6. Semgrep 실행 관련 규칙
+  # =============================================================================
+
+  - id: semgrep-without-error-handling
+    pattern: |
+      subprocess.run(["semgrep", ...])
+    message: Semgrep execution should include error handling and logging.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: reliability
+
+  - id: temp-directory-not-cleaned
+    pattern: |
+      $DIR = tempfile.mkdtemp(...)
+      ...
+    message: Temporary directory created but may not be cleaned up. Use try-finally or with statement.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: best-practice
+
+  # =============================================================================
+  # 7. 환경 변수 및 설정
+  # =============================================================================
+
+  - id: missing-environment-variable-check
+    pattern: |
+      $VAR = os.environ[$KEY]
+    message: Accessing environment variable without default or try-except. Consider using os.environ.get().
+    severity: INFO
+    languages:
+      - python
+    metadata:
+      category: reliability
+
+  - id: sensitive-data-in-logs
+    pattern-either:
+      - pattern: logging.$LEVEL(f"... {password} ...")
+      - pattern: logging.$LEVEL(f"... {token} ...")
+      - pattern: logging.$LEVEL(f"... {secret} ...")
+      - pattern: logging.$LEVEL(f"... {api_key} ...")
+    message: Potential sensitive data in logs. Avoid logging credentials.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+
+  # =============================================================================
+  # 8. Git 작업 보안
+  # =============================================================================
+
+  - id: git-clone-without-depth
+    pattern: |
+      subprocess.run(["git", "clone", ...])
+    message: Git clone without --depth may clone large repositories. Consider using shallow clone.
+    severity: INFO
+    languages:
+      - python
+    metadata:
+      category: performance
+
+  - id: unsafe-repo-deletion
+    pattern: |
+      shutil.rmtree($PATH)
+    message: Ensure the path is validated before deletion to prevent accidental data loss.
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: security
