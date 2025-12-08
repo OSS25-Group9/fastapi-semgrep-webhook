@@ -26,7 +26,6 @@ print(f".env 파일 존재: {os.path.exists(env_path)}")
 # 모니터링 API 라우터 추가 (이것만 추가!)
 app.include_router(monitoring_router)  # 추가 2
 
-GITHUB_TOKEN = "ghp_"  # GitHub Personal Access Token
 DOWNLOAD_DIR = "./downloaded_repo"
 RESULT_JSON_PATH = os.path.join(DOWNLOAD_DIR, "result.json")
 
