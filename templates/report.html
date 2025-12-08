@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Semgrep Report</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
+    h1, h2 { margin-bottom: 0.3rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 14px; }
+    th { background: #f5f5f5; text-align: left; }
+    tr:nth-child(even) { background: #fafafa; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #fff; }
+    .badge-error { background: #e53935; }
+    .badge-warning { background: #fb8c00; }
+    .badge-info { background: #1e88e5; }
+    .summary { margin-bottom: 1rem; }
+    .summary span { margin-right: 12px; }
+    .path-title { margin-top: 1.5rem; }
+    .no-result { padding: 1rem; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; }
+    code { font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body>
+  <h1>Semgrep Scan Report</h1>
+
+  {% if not has_result %}
+    <div class="no-result">
+      아직 Semgrep 스캔 결과가 없습니다. 웹훅을 통해 스캔을 한 번 실행해 주세요.
+    </div>
+  {% else %}
+    <div class="summary">
+      <span><strong>Total:</strong> {{ summary.total }}</span>
+      <span><strong>ERROR:</strong> {{ summary.error }}</span>
+      <span><strong>WARNING:</strong> {{ summary.warning }}</span>
+      <span><strong>INFO:</strong> {{ summary.info }}</span>
+      <span style="float:right; color:#666;">Generated at: {{ generated_at }}</span>
+    </div>
+
+    {% for path, issues in by_file.items() %}
+      <h2 class="path-title">{{ path }}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Line</th>
+            <th>Rule</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in issues %}
+            <tr>
+              <td>
+                {% set sev = (f.severity or 'INFO').upper() %}
+                {% if sev == 'ERROR' %}
+                  <span class="badge badge-error">{{ sev }}</span>
+                {% elif sev == 'WARNING' %}
+                  <span class="badge badge-warning">{{ sev }}</span>
+                {% else %}
+                  <span class="badge badge-info">{{ sev }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if f.start_line and f.end_line and f.start_line != f.end_line %}
+                  {{ f.start_line }}–{{ f.end_line }}
+                {% else %}
+                  {{ f.start_line or '-' }}
+                {% endif %}
+              </td>
+              <td><code>{{ f.check_id }}</code></td>
+              <td>{{ f.message }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endfor %}
+  {% endif %}
+</body>
+</html>
