@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from github_client import download_repo_zip
 from semgrep_runner import run_semgrep
 from dotenv import load_dotenv
+from monitoring.monitoring_api import router as monitoring_router  # 추가 1
 import json
 import os
 from collections import defaultdict
@@ -22,6 +23,10 @@ print(f"토큰 길이: {len(GITHUB_TOKEN) if GITHUB_TOKEN else 0}")
 print(f".env 파일 경로: {env_path}")
 print(f".env 파일 존재: {os.path.exists(env_path)}")
 
+# 모니터링 API 라우터 추가 (이것만 추가!)
+app.include_router(monitoring_router)  # 추가 2
+
+GITHUB_TOKEN = "ghp_"  # GitHub Personal Access Token
 DOWNLOAD_DIR = "./downloaded_repo"
 RESULT_JSON_PATH = os.path.join(DOWNLOAD_DIR, "result.json")
 
@@ -194,3 +199,10 @@ async def report(request: Request):
 @app.get("/")
 def root():
     return {"message": "Semgrep Webhook Service Running!", "report_url": "/report"}
+    # 3) 결과 반환 (원하면 Slack/Discord 전송도 가능)
+    return {
+        "status": "success",
+        "repository": repo,
+        "commit": commit_sha,
+        "result": result
+    }
